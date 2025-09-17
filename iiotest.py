@@ -24,8 +24,6 @@ from PyQt5 import Qt
 from gnuradio import qtgui
 from gnuradio.filter import firdes
 import sip
-from gnuradio import blocks
-import pmt
 from gnuradio import gr
 from gnuradio.fft import window
 import sys
@@ -149,13 +147,12 @@ class iiotest(gr.top_block, Qt.QWidget):
         self.osmosdr_sink_0.set_bandwidth(0, 0)
         self.epy_block_1 = epy_block_1.LoRaPreambleDetector(sample_rate=1000000.0, bandwidth=125000.0, sf=7, preamble_symbols=8, energy_window=128, energy_threshold_factor=1, step_size=64)
         self.epy_block_0 = epy_block_0.my_sync_block(delay=0.3)
-        self.blocks_message_strobe_0 = blocks.message_strobe(pmt.intern("NEXT"), 100)
 
 
         ##################################################
         # Connections
         ##################################################
-        self.msg_connect((self.blocks_message_strobe_0, 'strobe'), (self.epy_block_0, 'trigger'))
+        self.msg_connect((self.epy_block_1, 'trigger'), (self.epy_block_0, 'trigger'))
         self.connect((self.epy_block_0, 0), (self.osmosdr_sink_0, 0))
         self.connect((self.epy_block_0, 0), (self.qtgui_sink_x_0_0, 0))
         self.connect((self.epy_block_1, 0), (self.qtgui_sink_x_0, 0))

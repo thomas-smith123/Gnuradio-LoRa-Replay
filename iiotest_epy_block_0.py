@@ -34,27 +34,13 @@ class my_sync_block(gr.sync_block):
         self.replay = 0
         self.message_port_register_in(pmt.intern("trigger"))
         self.set_msg_handler(pmt.intern("trigger"), self.handle_trigger)
-
+        self.trig_mark = False
     def work(self, input_items, output_items):
         if time.time()-self.last_send_time>self.delay:
 
             print(f"{time.time()-self.last_send_time} s since last send")
             if self.count is None or self.max is None:
                 print("[ERROR] self.count or self.max is None!")
-                return -1
-            if self.reread:
-                self.reread = False
-                samples = self.data_t[self.count, :self.b//2]+1j*self.data_t[self.count, self.b//2:]
-
-                output_items[0][:8192] = samples[:8192]
-                self.ready_to_read = False
-                self.last_send_time = time.time()
-                print(f'Replay wave: {self.replay}')
-                self.replay += 1
-                # print(f"已发送一个波形，长度: {len(samples)} 个样本")
-                return 8192
-            if self.count >= self.max:
-                print("已到达文件末尾")
                 return -1
             
             # 转换数据并输出
@@ -71,7 +57,24 @@ class my_sync_block(gr.sync_block):
                 self.replay = 0
                 self.last_send_time = time.time()
                 print(f'Next wave: {self.count}')
+                self.trig_mark = False
                 return 8192
+            
+            if self.reread:
+                self.reread = False
+                samples = self.data_t[self.count, :self.b//2]+1j*self.data_t[self.count, self.b//2:]
+
+                output_items[0][:8192] = samples[:8192]
+                self.ready_to_read = False
+                self.last_send_time = time.time()
+                print(f'Replay wave: {self.replay}')
+                self.replay += 1
+                # print(f"已发送一个波形，长度: {len(samples)} 个样本")
+                return 8192
+            
+            if self.count >= self.max:
+                print("已到达文件末尾")
+                return -1
         else:
             output_items[0][:8192] = np.zeros(8192, dtype=np.complex64)
             # self.last_send_time = time.time()
@@ -87,13 +90,16 @@ class my_sync_block(gr.sync_block):
         return True
     
     def handle_trigger(self, msg):
-        msg = pmt.symbol_to_string(msg)
-        if msg == "NEXT":
-            # print(msg)
-            self.ready_to_read = True
-            self.reread = False
-            # print("收到消息端口触发信号，准备读取下一个波形")
-        if msg == "REPLAY":
-            # print(msg)
-            self.reread = True
-            self.ready_to_read = False
+        if not self.trig_mark:
+            msg = pmt.symbol_to_string(msg)
+            if msg == "NEXT":
+                # print(msg)
+                self.ready_to_read = True
+                self.reread = False
+                self.trig_mark = True
+                # print("收到消息端口触发信号，准备读取下一个波形")
+            if msg == "REPLAY":
+                # print(msg)
+                self.reread = True
+                self.ready_to_read = False
+            

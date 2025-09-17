@@ -168,7 +168,7 @@ class LoRaPreambleDetector(gr.sync_block):
     def __init__(self, sample_rate=1e6, bandwidth=125e3,
                  sf=7, preamble_symbols=8,
                  energy_window=128, energy_threshold_factor=0.5,
-                 step_size=256):
+                 step_size=256,save_path='./'):
         gr.sync_block.__init__(
             self,
             name="LoRa Preamble Detector",
@@ -182,7 +182,7 @@ class LoRaPreambleDetector(gr.sync_block):
         self.sf = sf
         self.symbol_len = int(2**sf * sample_rate / bandwidth)
         self.preamble_len = preamble_symbols * self.symbol_len
-
+        self.save_path = save_path
         # 能量检测参数
         self.energy_window = energy_window
         self.energy_threshold_factor = energy_threshold_factor
@@ -190,7 +190,7 @@ class LoRaPreambleDetector(gr.sync_block):
         self.step_size = step_size
 
         # 输出长度控制
-        self.set_output_multiple(4096*2*2)  # 每次处理长度，保证work快
+        self.set_output_multiple(4096*5)  # 每次处理长度，保证work快
 
         # 缓冲区
         self.buffer = np.zeros(0, dtype=np.complex64)
@@ -227,17 +227,17 @@ class LoRaPreambleDetector(gr.sync_block):
         if len(rise_edges) > 0:
             # np.save(f'{time.time()}.npy', energy)
             start_idx = rise_edges[0]
-            if start_idx + self.preamble_len <= len(segment):
-                print('dddddd')
-                preamble_segment = segment[start_idx:start_idx+self.preamble_len].copy()
-
+            if start_idx + self.preamble_len+self.energy_window//2 <= (len(segment)) :
+                # print('dddddd')
+                preamble_segment = segment[start_idx+ self.energy_window//2:start_idx+self.preamble_len+self.energy_window//2].copy()
+                # np.save(f'{time.time()}.npy', energy)
                 # 输出 preamble
                 out_len = min(len(out), len(preamble_segment))
                 out[:out_len] = preamble_segment[:out_len]
                 # print(len(preamble_segment))
                 # 发送触发消息
                 self.message_port_pub(pmt.intern("trigger"), pmt.intern("NEXT"))
-                np.save(f'{time.time()}.npy', preamble_segment)
+                np.save(self.save_path+f'{time.time()}.npy', preamble_segment)
                 # 丢掉已处理数据
                 self.buffer = self.buffer[start_idx + self.preamble_len:]
                 return consumed
@@ -246,6 +246,6 @@ class LoRaPreambleDetector(gr.sync_block):
         if len(self.buffer) > 10 * self.preamble_len:
             # 防止无限堆积
             self.buffer = self.buffer[-10 * self.preamble_len:]
-        self.message_port_pub(pmt.intern("trigger"), pmt.intern("REPLAY"))
+            self.message_port_pub(pmt.intern("trigger"), pmt.intern("REPLAY"))
         return consumed
 

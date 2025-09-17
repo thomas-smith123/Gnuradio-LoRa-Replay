@@ -79,7 +79,7 @@ blocks:
     bus_structure: null
     coordinate: [216, 240.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: blocks_stream_to_vector_0
   id: blocks_stream_to_vector
   parameters:
@@ -115,42 +115,45 @@ blocks:
       \ = zmq.Context()\n\n        self.last_send_time = time.time()\n        self.ready_to_read\
       \ = False\n        self.reread = False\n        self.replay = 0\n        self.message_port_register_in(pmt.intern(\"\
       trigger\"))\n        self.set_msg_handler(pmt.intern(\"trigger\"), self.handle_trigger)\n\
-      \n    def work(self, input_items, output_items):\n        if time.time()-self.last_send_time>self.delay:\n\
-      \n            print(f\"{time.time()-self.last_send_time} s since last send\"\
-      )\n            if self.count is None or self.max is None:\n                print(\"\
-      [ERROR] self.count or self.max is None!\")\n                return -1\n    \
-      \        if self.reread:\n                self.reread = False\n            \
-      \    samples = self.data_t[self.count, :self.b//2]+1j*self.data_t[self.count,\
+      \        self.trig_mark = False\n    def work(self, input_items, output_items):\n\
+      \        if time.time()-self.last_send_time>self.delay:\n\n            print(f\"\
+      {time.time()-self.last_send_time} s since last send\")\n            if self.count\
+      \ is None or self.max is None:\n                print(\"[ERROR] self.count or\
+      \ self.max is None!\")\n                return -1\n            \n          \
+      \  # \u8F6C\u6362\u6570\u636E\u5E76\u8F93\u51FA\n            if self.ready_to_read:\n\
+      \                samples = self.data_t[self.count, :self.b//2]+1j*self.data_t[self.count,\
+      \ self.b//2:]\n                #for x in range(8192):\n                #   \
+      \ output_items[0][x] = samples[x]\n                output_items[0][:8192] =\
+      \ samples[:8192]\n                #output_items[0][:8192] = np.array(samples)\n\
+      \                self.ready_to_read = False\n                self.reread = False\n\
+      \                # print(f\"\u5DF2\u53D1\u9001\u4E00\u4E2A\u6CE2\u5F62\uFF0C\
+      \u957F\u5EA6: {len(samples)} \u4E2A\u6837\u672C\")\n                self.count\
+      \ = self.count+1\n                self.replay = 0\n                self.last_send_time\
+      \ = time.time()\n                print(f'Next wave: {self.count}')\n       \
+      \         self.trig_mark = False\n                return 8192\n            \n\
+      \            if self.reread:\n                self.reread = False\n        \
+      \        samples = self.data_t[self.count, :self.b//2]+1j*self.data_t[self.count,\
       \ self.b//2:]\n\n                output_items[0][:8192] = samples[:8192]\n \
       \               self.ready_to_read = False\n                self.last_send_time\
       \ = time.time()\n                print(f'Replay wave: {self.replay}')\n    \
       \            self.replay += 1\n                # print(f\"\u5DF2\u53D1\u9001\
       \u4E00\u4E2A\u6CE2\u5F62\uFF0C\u957F\u5EA6: {len(samples)} \u4E2A\u6837\u672C\
-      \")\n                return 8192\n            if self.count >= self.max:\n \
-      \               print(\"\u5DF2\u5230\u8FBE\u6587\u4EF6\u672B\u5C3E\")\n    \
-      \            return -1\n            \n            # \u8F6C\u6362\u6570\u636E\
-      \u5E76\u8F93\u51FA\n            if self.ready_to_read:\n                samples\
-      \ = self.data_t[self.count, :self.b//2]+1j*self.data_t[self.count, self.b//2:]\n\
-      \                #for x in range(8192):\n                #    output_items[0][x]\
-      \ = samples[x]\n                output_items[0][:8192] = samples[:8192]\n  \
-      \              #output_items[0][:8192] = np.array(samples)\n               \
-      \ self.ready_to_read = False\n                self.reread = False\n        \
-      \        # print(f\"\u5DF2\u53D1\u9001\u4E00\u4E2A\u6CE2\u5F62\uFF0C\u957F\u5EA6\
-      : {len(samples)} \u4E2A\u6837\u672C\")\n                self.count = self.count+1\n\
-      \                self.replay = 0\n                self.last_send_time = time.time()\n\
-      \                print(f'Next wave: {self.count}')\n                return 8192\n\
-      \        else:\n            output_items[0][:8192] = np.zeros(8192, dtype=np.complex64)\n\
-      \            # self.last_send_time = time.time()\n            return 8192\n\n\
-      \    def stop(self):\n        if hasattr(self, 'file') and self.file:\n    \
-      \        self.file.close()\n        if hasattr(self, 'socket'):\n          \
-      \  self.socket.close()\n        if hasattr(self, 'context'):\n            self.context.term()\n\
-      \        return True\n    \n    def handle_trigger(self, msg):\n        msg\
-      \ = pmt.symbol_to_string(msg)\n        if msg == \"NEXT\":\n            # print(msg)\n\
-      \            self.ready_to_read = True\n            self.reread = False\n  \
-      \          # print(\"\u6536\u5230\u6D88\u606F\u7AEF\u53E3\u89E6\u53D1\u4FE1\u53F7\
-      \uFF0C\u51C6\u5907\u8BFB\u53D6\u4E0B\u4E00\u4E2A\u6CE2\u5F62\")\n        if\
-      \ msg == \"REPLAY\":\n            # print(msg)\n            self.reread = True\n\
-      \            self.ready_to_read = False\n"
+      \")\n                return 8192\n            \n            if self.count >=\
+      \ self.max:\n                print(\"\u5DF2\u5230\u8FBE\u6587\u4EF6\u672B\u5C3E\
+      \")\n                return -1\n        else:\n            output_items[0][:8192]\
+      \ = np.zeros(8192, dtype=np.complex64)\n            # self.last_send_time =\
+      \ time.time()\n            return 8192\n\n    def stop(self):\n        if hasattr(self,\
+      \ 'file') and self.file:\n            self.file.close()\n        if hasattr(self,\
+      \ 'socket'):\n            self.socket.close()\n        if hasattr(self, 'context'):\n\
+      \            self.context.term()\n        return True\n    \n    def handle_trigger(self,\
+      \ msg):\n        if not self.trig_mark:\n            msg = pmt.symbol_to_string(msg)\n\
+      \            if msg == \"NEXT\":\n                # print(msg)\n           \
+      \     self.ready_to_read = True\n                self.reread = False\n     \
+      \           self.trig_mark = True\n                # print(\"\u6536\u5230\u6D88\
+      \u606F\u7AEF\u53E3\u89E6\u53D1\u4FE1\u53F7\uFF0C\u51C6\u5907\u8BFB\u53D6\u4E0B\
+      \u4E00\u4E2A\u6CE2\u5F62\")\n            if msg == \"REPLAY\":\n           \
+      \     # print(msg)\n                self.reread = True\n                self.ready_to_read\
+      \ = False\n            "
     affinity: ''
     alias: ''
     comment: ''
@@ -170,151 +173,57 @@ blocks:
 - name: epy_block_1
   id: epy_block
   parameters:
-    _source_code: "# \"\"\"\n# Embedded Python Blocks:\n\n# Each time this file is\
-      \ saved, GRC will instantiate the first class it finds\n# to get ports and parameters\
-      \ of your block. The arguments to __init__  will\n# be the parameters. All of\
-      \ them are required to have default values!\n# \"\"\"\n\n# import numpy as np\n\
-      # from gnuradio import gr\n# import pmt\n# import time\n\n# class blk(gr.sync_block):\n\
-      #     \"\"\"LoRa Preamble Detector - Energy Detection Only\"\"\"\n\n#     def\
-      \ __init__(self, sample_rate=1e6, bandwidth=125e3, sf=7, threshold=0.2):\n#\
-      \         gr.sync_block.__init__(\n#             self,\n#             name='LoRa\
-      \ Preamble Detector (Energy Only)',\n#             in_sig=[np.complex64],\n\
-      #             out_sig=[np.complex64]\n#         )\n#         self.sample_rate\
-      \ = sample_rate\n#         self.bandwidth = bandwidth\n#         self.sf = sf\n\
-      #         self.threshold = threshold\n        \n#         # \u80FD\u91CF\u68C0\
-      \u6D4B\u53C2\u6570\n#         self.window_size = 128  # \u80FD\u91CF\u8BA1\u7B97\
-      \u7A97\u53E3\n#         self.min_high_len = 256  # \u6700\u5C0F\u9AD8\u80FD\u91CF\
-      \u6301\u7EED\u65F6\u95F4\n#         self.capture_len = 8192  # \u6355\u83B7\u957F\
-      \u5EA6\n#         self.energy_threshold_factor = 5  # \u80FD\u91CF\u9608\u503C\
-      \u500D\u6570\n        \n#         # \u72B6\u6001\u53D8\u91CF\n#         self.last_trigger_time\
-      \ = 0\n#         self.trigger_interval = 0.1  # \u6700\u5C0F\u89E6\u53D1\u95F4\
-      \u9694(\u79D2)\n#         self.detection_count = 0\n        \n#         # \u8BBE\
-      \u7F6E\u8F93\u51FA\u591A\u500D\u6570\n#         self.set_output_multiple(self.capture_len*2)\n\
-      \        \n#         # \u6CE8\u518C\u6D88\u606F\u8F93\u51FA\u7AEF\u53E3\n# \
-      \        self.message_port_register_out(pmt.intern(\"trigger\"))\n        \n\
-      #         print(\"LoRa\u80FD\u91CF\u68C0\u6D4B\u5668\u521D\u59CB\u5316\u5B8C\
-      \u6210\")\n\n#     def work(self, input_items, output_items):\n#         in0\
-      \ = input_items[0]\n#         out = output_items[0]\n#         n_input = len(in0)\n\
-      #         # output_items[0][:] = in0\n#         # \u900F\u4F20\u6570\u636E\n\
-      #         out[:n_input] = in0\n        \n#         # \u5982\u679C\u8F93\u5165\
-      \u6570\u636E\u592A\u5C11\uFF0C\u76F4\u63A5\u8FD4\u56DE\n#         if n_input\
-      \ < self.window_size + self.min_high_len:\n#             return n_input\n\n\
-      #         # 1. \u8BA1\u7B97\u6ED1\u52A8\u80FD\u91CF\n#         energy = np.convolve(np.abs(in0)**2,\
-      \ np.ones(self.window_size), 'valid') / self.window_size\n        \n#      \
-      \   # 2. \u4F30\u8BA1\u566A\u58F0\u57FA\u5E95\uFF08\u4F7F\u7528\u4E2D\u4F4D\u6570\
-      \u66F4\u9C81\u68D2\uFF09\n#         noise_floor = np.median(energy)\n#     \
-      \    threshold = noise_floor * self.energy_threshold_factor\n        \n#   \
-      \      # 3. \u68C0\u6D4B\u80FD\u91CF\u8D85\u8FC7\u9608\u503C\u7684\u533A\u57DF\
-      \n#         above_threshold = energy > threshold\n        \n#         # 4. \u5BFB\
-      \u627E\u8FDE\u7EED\u7684\u9AD8\u80FD\u91CF\u533A\u57DF\n#         # \u4F7F\u7528\
-      \u5DEE\u5206\u627E\u5230\u4E0A\u5347\u6CBF\u548C\u4E0B\u964D\u6CBF\n#      \
-      \   diff_above = np.diff(above_threshold.astype(int))\n#         rise_edges\
-      \ = np.where(diff_above == 1)[0]  # \u4E0A\u5347\u6CBF\n#         fall_edges\
-      \ = np.where(diff_above == -1)[0]  # \u4E0B\u964D\u6CBF\n        \n#       \
-      \  # \u5904\u7406\u8FB9\u754C\u60C5\u51B5\n#         if len(rise_edges) > len(fall_edges):\n\
-      #             fall_edges = np.append(fall_edges, len(above_threshold) - 1)\n\
-      \        \n#         # 5. \u68C0\u67E5\u6BCF\u4E2A\u9AD8\u80FD\u91CF\u533A\u57DF\
-      \n#         for i in range(len(rise_edges)):\n#             start_idx = rise_edges[i]\n\
-      #             end_idx = fall_edges[i] if i < len(fall_edges) else len(above_threshold)\
-      \ - 1\n            \n#             # \u68C0\u67E5\u6301\u7EED\u65F6\u95F4\u662F\
-      \u5426\u8DB3\u591F\u957F\n#             duration = end_idx - start_idx\n#  \
-      \           if duration >= self.min_high_len:\n#                 # \u68C0\u67E5\
-      \u89E6\u53D1\u95F4\u9694\n#                 current_time = time.time()\n#  \
-      \               if current_time - self.last_trigger_time > self.trigger_interval:\n\
-      #                     # \u786E\u4FDD\u6709\u8DB3\u591F\u7684\u6570\u636E\u8FDB\
-      \u884C\u6355\u83B7\n#                     if start_idx + self.capture_len <=\
-      \ n_input:\n#                         # \u53D1\u9001\u89E6\u53D1\u6D88\u606F\
-      \n#                         self.message_port_pub(pmt.intern(\"trigger\"), pmt.intern(\"\
-      NEXT\"))\n#                         self.last_trigger_time = current_time\n\
-      #                         self.detection_count += 1\n                      \
-      \  \n#                         print(f\"\u68C0\u6D4B\u5230\u4FE1\u53F7 #{self.detection_count},\
-      \ \u80FD\u91CF: {np.mean(energy[start_idx:end_idx]):.2f}, \u566A\u58F0\u57FA\
-      \u5E95: {noise_floor:.2f}\")\n                        \n#                  \
-      \       # \u8FD4\u56DE\u5DF2\u5904\u7406\u7684\u6570\u636E\u91CF\n#        \
-      \                 return n_input\n#                     else:\n#           \
-      \              # \u6570\u636E\u4E0D\u8DB3\uFF0C\u7B49\u5F85\u66F4\u591A\u6570\
-      \u636E\n#                         print(\"1\")\n#                 else:\n# \
-      \                    print(\"2\")\n#             else:\n#                 print(\"\
-      3\")\n#         self.message_port_pub(pmt.intern(\"trigger\"), pmt.intern(\"\
-      REPLAY\"))            \n        \n#         return n_input\n\n#     #     output_items[0][:]\
-      \ = 0\n#     #     current_time = time.time()\n#     #     threshold = self.threshold\n\
-      #     #     step = max(1, self.symbol_length // 32)\n#     #     correlations\
-      \ = []\n#     #     positions = []\n#     #     for i in range(0, n_input -\
-      \ self.symbol_length, step):\n#     #         window = input_items[0][i:i+self.symbol_length]\n\
-      #     #         corr = np.abs(np.correlate(window, self.preamble_template, mode='valid'))[0]\n\
-      #     #         corr /= (np.linalg.norm(window) * np.linalg.norm(self.preamble_template)\
-      \ + 1e-10)\n#     #         correlations.append(corr)\n#     #         positions.append(i)\n\
-      #     #     found = False\n#     #     # print(f\"Correlation values: {correlations}\"\
-      )  # Debug: print correlation values\n#     #     for idx in range(len(correlations)\
-      \ - 6):\n#     #         if all(c > threshold for c in correlations[idx:idx+7]):\n\
-      #     #             detection_index = positions[idx]\n#     #             detection_index\
-      \ = max(0, detection_index - self.symbol_length // 2)\n#     #             #\
-      \ print(f\"\u68C0\u6D4B\u5230\u8FDE\u7EED7\u4E2A\u524D\u5BFC\u5CF0\uFF0C\u5B9A\
-      \u4F4D\u70B9: {detection_index}\")\n\n#     #             start_idx = detection_index\n\
-      #     #             end_idx = min(detection_index + self.preamble_length, n_input)\n\
-      #     #             if end_idx - start_idx >= self.preamble_length:\n#     #\
-      \                 self.detected_preamble = input_items[0][start_idx:start_idx+self.preamble_length].copy()\n\
-      #     #                 output_len = min(n_output, len(self.detected_preamble))\n\
-      #     #                 output_items[0][:output_len] = self.detected_preamble[:output_len]\n\
-      #     #                 self.message_port_pub(pmt.intern(\"trigger\"), pmt.intern(\"\
-      NEXT\"))\n#     #                 self.detection_time = current_time\n#    \
-      \ #                 # print(f\"\u5DF2\u63D0\u53D6\u524D\u5BFC\u6837\u672C\u70B9\
-      \uFF0C\u957F\u5EA6: {len(self.detected_preamble)}\")\n#     #              \
-      \   found = True\n#     #                 return output_len\n#     #       \
-      \      else:\n#     #                 self.message_port_pub(pmt.intern(\"trigger\"\
-      ), pmt.intern(\"REPLAY\"))\n#     #                 # print(\"Need replay1\"\
-      )\n#     #                 found = False\n#     #                 return n_input\n\
-      #     #     # if not found:\n#     #     #     # print(\"not find\")\n#    \
-      \ #     #     self.message_port_pub(pmt.intern(\"trigger\"), pmt.intern(\"REPLAY\"\
-      ))\n#     #     #     return 0\n#     #     return n_input\n\n#     # def stop(self):\n\
-      #     #     return True\n\nimport numpy as np\nfrom gnuradio import gr\nimport\
-      \ pmt\nimport time\nimport matplotlib.pyplot as plt\n\nclass LoRaPreambleDetector(gr.sync_block):\n\
+    _source_code: "\nimport numpy as np\nfrom gnuradio import gr\nimport pmt\nimport\
+      \ time\nimport matplotlib.pyplot as plt\n\nclass LoRaPreambleDetector(gr.sync_block):\n\
       \    \"\"\"\n    LoRa \u524D\u5BFC\u68C0\u6D4B\u5668\uFF08\u7F13\u51B2 + \u5206\
       \u6BB5\u80FD\u91CF\u68C0\u6D4B\uFF09\n    \"\"\"\n    def __init__(self, sample_rate=1e6,\
       \ bandwidth=125e3,\n                 sf=7, preamble_symbols=8,\n           \
-      \      energy_window=128, energy_threshold_factor=0.5,\n                 step_size=256):\n\
+      \      energy_window=128, energy_threshold_factor=0.5,\n                 step_size=256,save_path='./'):\n\
       \        gr.sync_block.__init__(\n            self,\n            name=\"LoRa\
       \ Preamble Detector\",\n            in_sig=[np.complex64],\n            out_sig=[np.complex64]\n\
       \        )\n\n        # LoRa \u53C2\u6570\n        self.sample_rate = sample_rate\n\
       \        self.bandwidth = bandwidth\n        self.sf = sf\n        self.symbol_len\
       \ = int(2**sf * sample_rate / bandwidth)\n        self.preamble_len = preamble_symbols\
-      \ * self.symbol_len\n\n        # \u80FD\u91CF\u68C0\u6D4B\u53C2\u6570\n    \
-      \    self.energy_window = energy_window\n        self.energy_threshold_factor\
-      \ = energy_threshold_factor\n        \n        self.step_size = step_size\n\n\
-      \        # \u8F93\u51FA\u957F\u5EA6\u63A7\u5236\n        self.set_output_multiple(4096*2*2)\
-      \  # \u6BCF\u6B21\u5904\u7406\u957F\u5EA6\uFF0C\u4FDD\u8BC1work\u5FEB\n\n  \
-      \      # \u7F13\u51B2\u533A\n        self.buffer = np.zeros(0, dtype=np.complex64)\n\
-      \n        # \u6D88\u606F\u7AEF\u53E3\n        self.message_port_register_out(pmt.intern(\"\
-      trigger\"))\n\n        print(f\"LoRaPreambleDetector \u521D\u59CB\u5316\u5B8C\
-      \u6210\")\n        print(f\"\u7B26\u53F7\u957F\u5EA6: {self.symbol_len}, \u524D\
-      \u5BFC\u957F\u5EA6: {self.preamble_len}\")\n\n    def work(self, input_items,\
-      \ output_items):\n        in0 = input_items[0]\n        out = output_items[0]\n\
-      \n        # 1. \u7D2F\u79EF\u6570\u636E\u5230\u7F13\u5B58\n        self.buffer\
-      \ = np.concatenate([self.buffer, in0])\n        consumed = len(in0)   # \u8F93\
-      \u5165\u90FD\u8981\u6D88\u8D39\u6389\n\n        # 2. \u5982\u679C\u7F13\u5B58\
-      \u4E0D\u591F\uFF0C\u5C31\u5148\u8FD4\u56DE\n        if len(self.buffer) < self.preamble_len:\n\
-      \            return consumed\n\n        # 3. \u80FD\u91CF\u8BA1\u7B97\n    \
-      \    segment = self.buffer\n        energy = np.convolve(np.abs(segment)**2,\
-      \ np.ones(self.energy_window), 'valid')\n        \n        noise_floor = np.mean(energy)\
-      \   # \u6539\u6210\u5747\u503C\n        threshold = max(noise_floor * self.energy_threshold_factor,\
+      \ * self.symbol_len\n        self.save_path = save_path\n        # \u80FD\u91CF\
+      \u68C0\u6D4B\u53C2\u6570\n        self.energy_window = energy_window\n     \
+      \   self.energy_threshold_factor = energy_threshold_factor\n        \n     \
+      \   self.step_size = step_size\n\n        # \u8F93\u51FA\u957F\u5EA6\u63A7\u5236\
+      \n        self.set_output_multiple(4096*5)  # \u6BCF\u6B21\u5904\u7406\u957F\
+      \u5EA6\uFF0C\u4FDD\u8BC1work\u5FEB\n\n        # \u7F13\u51B2\u533A\n       \
+      \ self.buffer = np.zeros(0, dtype=np.complex64)\n\n        # \u6D88\u606F\u7AEF\
+      \u53E3\n        self.message_port_register_out(pmt.intern(\"trigger\"))\n\n\
+      \        print(f\"LoRaPreambleDetector \u521D\u59CB\u5316\u5B8C\u6210\")\n \
+      \       print(f\"\u7B26\u53F7\u957F\u5EA6: {self.symbol_len}, \u524D\u5BFC\u957F\
+      \u5EA6: {self.preamble_len}\")\n\n    def work(self, input_items, output_items):\n\
+      \        in0 = input_items[0]\n        out = output_items[0]\n\n        # 1.\
+      \ \u7D2F\u79EF\u6570\u636E\u5230\u7F13\u5B58\n        self.buffer = np.concatenate([self.buffer,\
+      \ in0])\n        consumed = len(in0)   # \u8F93\u5165\u90FD\u8981\u6D88\u8D39\
+      \u6389\n\n        # 2. \u5982\u679C\u7F13\u5B58\u4E0D\u591F\uFF0C\u5C31\u5148\
+      \u8FD4\u56DE\n        if len(self.buffer) < self.preamble_len:\n           \
+      \ return consumed\n\n        # 3. \u80FD\u91CF\u8BA1\u7B97\n        segment\
+      \ = self.buffer\n        energy = np.convolve(np.abs(segment)**2, np.ones(self.energy_window),\
+      \ 'valid')\n        \n        noise_floor = np.mean(energy)   # \u6539\u6210\
+      \u5747\u503C\n        threshold = max(noise_floor * self.energy_threshold_factor,\
       \ 1e-3)\n        # print(threshold)\n        # 4. \u4E0A\u5347\u6CBF\u68C0\u6D4B\
       \n        diff_energy = np.diff(energy)\n        rise_edges = np.where((diff_energy\
       \ > 1e-3) & (energy[1:] > threshold))[0]\n\n        if len(rise_edges) > 0:\n\
       \            # np.save(f'{time.time()}.npy', energy)\n            start_idx\
-      \ = rise_edges[0]\n            if start_idx + self.preamble_len <= len(segment):\n\
-      \                # print('dddddd')\n                preamble_segment = segment[start_idx:start_idx+self.preamble_len].copy()\n\
-      \n                # \u8F93\u51FA preamble\n                out_len = min(len(out),\
-      \ len(preamble_segment))\n                out[:out_len] = preamble_segment[:out_len]\n\
-      \                print(len(preamble_segment))\n                # \u53D1\u9001\
-      \u89E6\u53D1\u6D88\u606F\n                self.message_port_pub(pmt.intern(\"\
-      trigger\"), pmt.intern(\"NEXT\"))\n                # np.save(f'{time.time()}.npy',\
+      \ = rise_edges[0]\n            if start_idx + self.preamble_len+self.energy_window//2\
+      \ <= (len(segment)) :\n                # print('dddddd')\n                preamble_segment\
+      \ = segment[start_idx+ self.energy_window//2:start_idx+self.preamble_len+self.energy_window//2].copy()\n\
+      \                # np.save(f'{time.time()}.npy', energy)\n                #\
+      \ \u8F93\u51FA preamble\n                out_len = min(len(out), len(preamble_segment))\n\
+      \                out[:out_len] = preamble_segment[:out_len]\n              \
+      \  # print(len(preamble_segment))\n                # \u53D1\u9001\u89E6\u53D1\
+      \u6D88\u606F\n                self.message_port_pub(pmt.intern(\"trigger\"),\
+      \ pmt.intern(\"NEXT\"))\n                np.save(self.save_path+f'{time.time()}.npy',\
       \ preamble_segment)\n                # \u4E22\u6389\u5DF2\u5904\u7406\u6570\u636E\
       \n                self.buffer = self.buffer[start_idx + self.preamble_len:]\n\
       \                return consumed\n\n        # 5. \u5982\u679C\u6CA1\u68C0\u6D4B\
       \u5230\uFF0C\u5C31\u4FDD\u7559 buffer\uFF0C\u53EA\u6D88\u8D39\u8F93\u5165\n\
       \        if len(self.buffer) > 10 * self.preamble_len:\n            # \u9632\
       \u6B62\u65E0\u9650\u5806\u79EF\n            self.buffer = self.buffer[-10 *\
-      \ self.preamble_len:]\n        self.message_port_pub(pmt.intern(\"trigger\"\
+      \ self.preamble_len:]\n            self.message_port_pub(pmt.intern(\"trigger\"\
       ), pmt.intern(\"REPLAY\"))\n        return consumed\n\n"
     affinity: ''
     alias: ''
@@ -326,16 +235,18 @@ blocks:
     minoutbuf: '0'
     preamble_symbols: '8'
     sample_rate: '1000000.0'
+    save_path: '''./'''
     sf: '7'
     step_size: '64'
   states:
     _io_cache: "('LoRa Preamble Detector', 'LoRaPreambleDetector', [('sample_rate',\
       \ '1000000.0'), ('bandwidth', '125000.0'), ('sf', '7'), ('preamble_symbols',\
       \ '8'), ('energy_window', '128'), ('energy_threshold_factor', '0.5'), ('step_size',\
-      \ '256')], [('0', 'complex', 1)], [('0', 'complex', 1), ('trigger', 'message',\
-      \ 1)], '\\n    LoRa \u524D\u5BFC\u68C0\u6D4B\u5668\uFF08\u7F13\u51B2 + \u5206\
-      \u6BB5\u80FD\u91CF\u68C0\u6D4B\uFF09\\n    ', ['bandwidth', 'energy_threshold_factor',\
-      \ 'energy_window', 'sample_rate', 'sf', 'step_size'])"
+      \ '256'), ('save_path', \"'./'\")], [('0', 'complex', 1)], [('0', 'complex',\
+      \ 1), ('trigger', 'message', 1)], '\\n    LoRa \u524D\u5BFC\u68C0\u6D4B\u5668\
+      \uFF08\u7F13\u51B2 + \u5206\u6BB5\u80FD\u91CF\u68C0\u6D4B\uFF09\\n    ', ['bandwidth',\
+      \ 'energy_threshold_factor', 'energy_window', 'sample_rate', 'save_path', 'sf',\
+      \ 'step_size'])"
     bus_sink: false
     bus_source: false
     bus_structure: null
@@ -1804,6 +1715,7 @@ connections:
 - [epy_block_0, '0', uhd_usrp_sink_0, '0']
 - [epy_block_1, '0', blocks_file_sink_0, '0']
 - [epy_block_1, '0', qtgui_sink_x_0, '0']
+- [epy_block_1, trigger, epy_block_0, trigger]
 - [epy_block_2, strobe, epy_block_0, trigger]
 - [osmosdr_source_0, '0', epy_block_1, '0']
 - [uhd_usrp_source_0, '0', blocks_stream_to_vector_0, '0']
